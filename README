@@ -1,0 +1,19 @@
+Mapstraction
+====================
+...is a development of an existing Mapstraction Module at Drupal for Drupal 7. Important functionality provided by the current Discogs module is missing here. 
+
+INSTALLATION
+============
+- Install Drupal 7.
+- Add modules via ftp. 
+- Navigate from Drupal management menu to modules page. Enable modules Mastraction (core).
+- Create view of nodes (with lat/long fields) or use mapstraction render map function 
+
+TODO
+====
+- Documentation on architecture
+- Improve JQuery (drupal.mapstraction.js) including replace any holders (strings) with variables
+- Test Views style plugin and fix any issues
+- Develop mapstraction render map function, including working independently of Views 
+- "Instance of" module with import/export using Features, Views, Feeds, Ctools
+- Create variant to associate Openspace strategy / bounding box data with nodes.
