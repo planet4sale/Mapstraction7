@@ -1,0 +1,13 @@
+<?php
+
+/**
+ * Implementaton of hook_uninstall
+ */
+function mapstraction_uninstall(){
+  foreach(mapstraction_apis(TRUE) as $key => $api){
+    if($api['has_key']){
+      variable_del('mapstraction_api_'. $key);
+    }
+  }
+}
+?>

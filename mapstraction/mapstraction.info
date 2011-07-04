@@ -1,0 +1,11 @@
+name = Mapstraction
+core = 7.x
+description = Mapstraction allows you to display maps using a number of different mapping APIs.
+files[] = mapstraction.module
+files[] = mapstraction.apis.inc
+files[] = mapstraction.views.inc
+files[] = mapstraction_style_map.inc
+dependencies[] = views
+project = mapstraction
+
+

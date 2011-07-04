@@ -1,0 +1,211 @@
+<?php
+
+/**
+ * @file
+ * Main module file for Mapstraction. Contains hook implemetations and mapping
+ * theme function.
+ */
+
+/**
+ * Implementation of hook_theme().
+ */
+function mapstraction_theme($existing, $type, $theme, $path) {
+  return array(
+    'mapstraction_map' => array(
+      'variables' => array('api_script' => NULL, 'map_id' => NULL, 'width' => NULL, 'height' => NULL),
+      'template' => 'mapstraction-map',
+    ),
+  );  
+}
+
+/**
+ * Implementation of hook_views_api().
+ */
+function mapstraction_views_api() {
+  return array(
+    'api' => '3.0-alpha1',
+    'path' => drupal_get_path('module', 'mapstraction') ,
+  );
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function mapstraction_menu() {
+  $items = array();
+
+  $items['admin/settings/mapstraction'] = array(
+    'title' => 'Mapstraction settings',
+    'description' => 'Mapstraction administration menu.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('mapstraction_admin_settings'),
+    'file' => 'mapstraction.admin.inc',
+    'access arguments' => array('administer mapstraction'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  return $items;
+}
+
+/**
+ * Provides information about the available mapping API's. API definitions
+ * are stored in mapstraction.apis.inc.
+ *
+ * @param $full
+ *   Whether to return the full API definition or just an array for use as the
+ *   value for a Form API #options.
+ */
+function mapstraction_apis($full = FALSE) {
+  $apis = array(
+    'google' => array(
+      'title' => t('Google Maps'),
+      'render' => 'mapstraction_basic_render',
+      'src' => 'http://maps.google.com/maps?file=api&v=2&key=%key',
+      'has_key' => TRUE
+    ),
+    'googlev3' => array(
+      'title' => t('Google Maps V3'),
+      'render' => 'mapstraction_basic_render',
+      'src' => 'http://maps.google.com/maps/api/js?sensor=false',
+      'has_key' => FALSE
+    ),
+    'map24' => array(
+      'title' => t('Map24'),
+      'render' => 'mapstraction_basic_render',
+      'src' => 'http://api.maptp.map24.com/ajax?appkey=%key',
+      'has_key' => TRUE
+    ),
+    'multimap' => array(
+      'title' => t('MultiMap'),
+      'render' => 'mapstraction_basic_render',
+      'src' => 'http://developer.multimap.com/API/maps/1.2/%key',
+      'has_key' => TRUE
+    ),
+    'openspace' => array(
+      'title' => t('OpenSpace'),
+      'render' => 'mapstraction_basic_render',
+      'src' => 'http://openspace.ordnancesurvey.co.uk/osmapapi/openspace.js?key=%key',
+      'has_key' => TRUE
+    ),
+    'viamichelin' => array(
+      'title' => t('ViaMichelin'),
+      'render' => 'mapstraction_basic_render',
+      'src' => 'http://api.viamichelin.com/apijs/js/api.js?VMApiKey=%key',
+      'has_key' => TRUE
+    ),
+    'yahoo' => array(
+      'title' => t('Yahoo Maps'),
+      'render' => 'mapstraction_yahoo_render',
+      'has_key' => TRUE
+    ),
+    'mapquest' => array(
+      'title' => t('MapQuest'),
+      'render' => 'mapstraction_basic_render',
+      'src' => 'http://btilelog.beta.mapquest.com/tilelog/transaction?transaction=script&key=%key&itk=true&v=5.3.0_RC5&ipkg=controls1',
+      'has_key' => TRUE
+    ),
+    'microsoft' => array(
+      'title' => t('Microsoft Virtual Earth'),
+      'render' => 'mapstraction_microsoft_render',
+    ),
+    'openlayers' => array(
+      'title' => t('OpenLayers'),
+      'render' => 'mapstraction_openlayers_render',
+    ),
+    'freeearth' => array(
+      'title' => t('FreeEarth'),
+      'render' => 'mapstraction_freeearth_render',
+    ),
+    'cloudmade' => array(
+      'title' => t('CloudMade'),
+      'api' => 'openlayers',
+      'settings form' => 'mapstraction_cloudmade_settings_form',
+      'render' => 'mapstraction_cloudmade_render',
+      'has_key' => TRUE
+    ),
+  );
+
+  if (!$full) {
+    foreach ($apis as $key => $api) {
+      $apis[$key] = $api['title'];
+    }
+  }
+
+  return $apis;
+}
+
+/**
+ * Returns a themed mapstraction map
+ *
+ * @param string $id the map id
+ * @param string $provider E.g., Google, OpenStreetMap
+ * @param string $settings settings object
+ * @param string $rows array of data points
+ */
+function mapstraction_render_map($id, $provider, $settings, $rows = array()) {
+  $apis = mapstraction_apis(TRUE);
+  $api = $apis[$provider];
+  
+  // Allow the API definition to override the API name.
+  $provider = !empty($api['api']) ? $api['api'] : $provider;
+
+  // append unique name space to id
+  $mapid = 'mapstraction-' . $id;
+  
+  module_load_include('inc', 'mapstraction', 'mapstraction.apis');
+  $api_script = '';
+  if (function_exists($api['render'])) {
+    $api_script = call_user_func_array($api['render'], array($settings, $provider, $mapid));
+  }
+
+  // use the libraries module if available, otherwise load from the module directory
+  $library_path =
+    module_exists('libraries')
+      ? libraries_get_path('mapstraction') . '/source'
+      : drupal_get_path('module', 'mapstraction') . '/mapstraction/source';
+
+  // load mxn core and provider specific JS. Not using parameter approach due to drupal_add_js()
+  drupal_add_js('http://openlayers.org/api/OpenLayers.js', 'external');
+  drupal_add_js($library_path . '/mxn.js');
+  drupal_add_js($library_path . '/mxn.core.js');
+  drupal_add_js($library_path . '/mxn.'. $provider .'.core.js');
+  drupal_add_js(drupal_get_path('module', 'mapstraction') . '/mapstraction.drupal.js');
+  
+  // allow other modules to alter the rows collection
+  if ($altrows = module_invoke_all('mapstraction_rows_alter', $rows, $id, $provider)) {
+    $rows = $altrows;
+  }
+  
+  // Centre and zoom properly for a single point.
+  if (count($rows) == 1 && !empty($rows[0]['markers']) && count($rows[0]['markers']) == 1) {
+    // note we're reusing the initial point zoom value if set
+    $settings['initial_point']['zoom'] = ($settings['initial_point']['zoom_single']) ? $settings['initial_point']['zoom'] : 5;
+    $settings['initial_point']['auto'] = 0;
+    $settings['initial_point']['latitude'] = $rows[0]['markers'][0]['latitude'];
+    $settings['initial_point']['longitude'] = $rows[0]['markers'][0]['longitude'];
+  }  
+
+  $map = array(
+    'mapId' => $mapid,
+    'apiName' => $provider,
+    'markers' => $rows,
+    'controls' => $settings['controls'],
+    'initialPoint' => $settings['initial_point'],
+    'behaviours' => $settings['behaviours'],
+    'overlays' => $settings['overlays'],
+  );
+
+  // Add the map to Drupal.settings object in JS.
+  drupal_add_js(array('mapstraction' => array($map)), 'setting');
+  
+  // assume px dimensions if no other measure provided
+  if (is_numeric($settings['width'])){
+    $settings['width'] = $settings['width'] . 'px';
+  }
+  if (is_numeric($settings['height'])){
+    $settings['height'] = $settings['height'] . 'px';
+  }
+  
+//  return theme('mapstraction_map', $api_script, $mapid, $settings['width'], $settings['height']);
+   return theme('mapstraction_map', array('api_script' => $api_script, 'map_id' => $mapid, 'width' => $settings['width'], 'height' => $settings['height']));
+}
